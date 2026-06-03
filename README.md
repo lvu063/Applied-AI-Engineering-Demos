@@ -1,71 +1,91 @@
-# Cohere Portfolio — Applied AI Engineering Demos
+# Cohere Portfolio — Applied AI Engineering
 
-> Four focused demonstrations built to show practical skills for Cohere roles:
-> Prompt Specialist, RevOps Analyst, FDE Agentic Platform, and Software Engineer Collect.
-> All demos are runnable today with a free Cohere trial key.
+> Four production-inspired demos targeting engineering roles at Cohere.
+> Every demo runs today with a free trial key — or without one, in mock mode.
 
-**Live demo:** https://cohere-ai-playground.lovable.app
+**Live demo:** [cohere-ai-playground.lovable.app](https://cohere-ai-playground.lovable.app)
 
 ---
 
-## Repository Structure
+## What's in this repo
 
 ```
 cohere-portfolio/
+├── Dockerfile                          # Single containerised image for all demos
+├── docker-compose.yml                  # Run each demo by name
+├── requirements.txt
 │
 ├── prompt-eval/
-│   └── prompt_eval.py        # Prompt versioning + multi-dim evaluation framework
+│   ├── prompt_eval.py                  # Prompt versioning + multi-dim eval framework
+│   └── tool_agent.py                   # Function calling + ReAct agent loop
 │
 ├── revops/
-│   └── revops_pipeline.py    # GTM analytics: ARR waterfall, churn risk, customer 360
+│   └── revops_pipeline.py              # GTM analytics: ARR, churn risk, customer 360
 │
 ├── rag-agent/
-│   └── rag_agent.py          # RAG pipeline: Cohere Embed + Rerank + Command A
+│   └── rag_agent.py                    # RAG pipeline: Embed v3 + Rerank v4 + Command A
 │
 └── docs/
-    └── methodology.md         # Analytical decisions and design rationale
+    └── methodology.md                  # Design decisions, GTM stack narrative, Salesforce
+                                        # data model, production considerations
 ```
 
 ---
 
-## Quick Start
+## Quick start
 
 ```bash
-pip install cohere pandas numpy scipy
-export COHERE_API_KEY=your_trial_key_here
+# Install dependencies
+pip install -r requirements.txt
+
+# Set your Cohere trial key (free at dashboard.cohere.com/api-keys)
+export COHERE_API_KEY=your_key_here
+
+# Or run in mock mode — no key needed
+python prompt-eval/prompt_eval.py --mock
+```
+
+**Docker (no Python setup required):**
+```bash
+docker build -t cohere-portfolio .
+docker run -e COHERE_API_KEY=your_key cohere-portfolio
 ```
 
 ---
 
 ## Demo 1 — Prompt Evaluation Framework
-*Targets: Forward Deployed Engineer, Prompt Specialist*
+*Forward Deployed Engineer, Prompt Specialist*
 
-A systematic framework for iterating on and evaluating LLM prompts — the core daily
-work of a Prompt Specialist. Tests four prompt variants (baseline, structured,
-chain-of-thought, few-shot) against five test cases across four quality dimensions.
+A systematic evaluation harness for iterating on LLM prompts — the actual
+daily work of a Prompt Specialist. Vibe-checking is not a methodology.
+Four prompt variants, five test cases, four scoring dimensions.
 
 ```bash
-# Full evaluation across all variants
-python prompt-eval/prompt_eval.py
-
-# Single live demo query
-python prompt-eval/prompt_eval.py --demo "What is the gold PnL?"
-
-# Export results to CSV + JSON
-python prompt-eval/prompt_eval.py --export
-
-# Run without API key (mock mode)
-python prompt-eval/prompt_eval.py --mock
+python prompt-eval/prompt_eval.py                          # full eval
+python prompt-eval/prompt_eval.py --demo "What is gold PnL?"  # single query
+python prompt-eval/prompt_eval.py --export                 # save CSV + JSON
+python prompt-eval/prompt_eval.py --mock                   # no key needed
 ```
 
-**What it demonstrates:**
-- Prompt versioning with documented rationale for each variant
-- Multi-dimensional scoring: keyword coverage, hallucination resistance, conciseness, format
-- Reproducible evaluation methodology (not "vibe checking")
-- Enterprise use case grounding (financial analyst assistant)
-- Production patterns: retry logic, error handling, mock fallback
+**Four prompt variants tested:**
 
-**Sample output:**
+| Variant | Strategy | Key hypothesis |
+|---|---|---|
+| `v1_baseline` | Minimal instruction | Control — what does the model do with no scaffolding? |
+| `v2_structured` | Role + constraints | Does explicit role definition raise precision? |
+| `v3_chain_of_thought` | Reason before answer | Does CoT reduce confident-sounding wrong answers? |
+| `v4_few_shot` | Two exemplars | Do examples anchor format better than instructions? |
+
+**Four scoring dimensions:**
+
+| Dimension | Weight | Why it matters |
+|---|---|---|
+| Hallucination resistance | 30% | A confident wrong answer is worse than no answer |
+| Keyword coverage | 35% | Proxies factual completeness |
+| Conciseness | 20% | Verbose models hedge — verbosity is a reliability signal |
+| Format quality | 15% | Structured outputs are easier to parse downstream |
+
+**Sample leaderboard output:**
 ```
 PROMPT EVALUATION LEADERBOARD
 ======================================================================
@@ -79,137 +99,172 @@ Variant                       Overall     KW   Hall  Concise   Latency
 
 ---
 
-## Demo 2 — RevOps Analytics Pipeline
-*Targets: RevOps Analyst (Analytics)*
+## Demo 2 — Tool Use Agent
+*Forward Deployed Engineer, Prompt Specialist + Agentic Platform*
 
-Full revenue operations analytics stack on synthetic GTM data — 80 accounts,
-200 opportunities, 240 usage records. Mirrors what a RevOps Analyst does daily:
-pipeline coverage, churn risk scoring, customer 360, data hygiene checks.
+Extends the prompt eval work into agentic territory. A Prompt Specialist
+doesn't just evaluate static prompts — they build agents that call tools
+to complete multi-step tasks. This is a ReAct-style agent using Cohere
+Command A's function calling capability.
 
 ```bash
-# Full report
-python revops/revops_pipeline.py
-
-# Raw SQL queries via SQLite
-python revops/revops_pipeline.py --sql
-
-# Export all datasets to CSV
-python revops/revops_pipeline.py --export
+python prompt-eval/tool_agent.py                                            # default query
+python prompt-eval/tool_agent.py --query "What if gold drops 10%?"         # stress test
+python prompt-eval/tool_agent.py --eval                                     # tool selection eval
+python prompt-eval/tool_agent.py --mock                                     # no key needed
 ```
 
-**What it demonstrates:**
-- ARR waterfall by segment (new, expansion, churn, net)
-- Pipeline coverage: win rate and avg deal size by lead source
-- Customer 360: CRM + API usage + support tickets joined
-- Churn risk model: composite score from health, usage trend, open tickets
-- Data hygiene: 4 quality checks that would corrupt CRM reporting
-- Raw SQL (SQLite): window functions, CTEs, CASE statements
-- Mirrors BigQuery/Snowflake patterns used in Looker/Tableau
+**Five tools the agent can call:**
 
-**SQL highlight:**
-```sql
--- Expansion candidates: high usage growth, healthy, no critical tickets
-WITH usage_trend AS (
-    SELECT account_id,
-           MAX(api_calls) - MIN(api_calls) AS usage_growth
-    FROM usage GROUP BY account_id
-)
-SELECT a.account_name, a.segment, a.arr_usd, ut.usage_growth
-FROM accounts a
-JOIN usage_trend ut ON a.account_id = ut.account_id
-WHERE a.health_score > 70 AND ut.usage_growth > 5000
-ORDER BY ut.usage_growth DESC LIMIT 10
+| Tool | What it does |
+|---|---|
+| `get_position(symbol)` | Net quantity, spot price, cost basis, unrealised PnL |
+| `get_pnl_summary(entity)` | PnL by desk or metal |
+| `check_risk_limits(entity)` | Concentration % vs breach threshold |
+| `get_volatility(symbol)` | 30-day annualised vol, 52W range |
+| `calculate_stress_pnl(symbol, shock_pct)` | What-if price shock analysis |
+
+**Agent loop (ReAct pattern):**
 ```
+Query → Command A reasons → calls tool → observes result → reasons again → final answer
+```
+
+**Tool selection accuracy (mock mode):** 100% · **Parameter accuracy:** 80%
 
 ---
 
-## Demo 3 — Metals RAG Agent
-*Targets: Forward Deployed Engineer, Agentic Platform*
+## Demo 3 — RevOps Analytics Pipeline
+*RevOps Analyst (Analytics)*
 
-A production-style RAG pipeline that extends the Metals Risk Dashboard project
-with a natural language interface. Uses Cohere's full search stack:
-Embed v3 → cosine retrieval → Rerank v4 → Command A generation.
+Full revenue operations analytics stack on 80 synthetic accounts, 200
+opportunities, 240 usage records, and 310 support tickets. Mirrors what
+a RevOps Analyst does daily in BigQuery/Snowflake, surfaced in Looker.
 
 ```bash
-# Interactive chat
-python rag-agent/rag_agent.py
-
-# Single query
-python rag-agent/rag_agent.py --query "What is the gold PnL?"
-
-# Retrieval quality evaluation (Precision@1, Precision@3)
-python rag-agent/rag_agent.py --eval
-
-# Mock mode (no API key needed)
-python rag-agent/rag_agent.py --mock
+python revops/revops_pipeline.py             # full report
+python revops/revops_pipeline.py --sql       # raw SQL via SQLite
+python revops/revops_pipeline.py --export    # save 6 CSV files
 ```
 
-**What it demonstrates:**
-- Full RAG pipeline: embed → retrieve → rerank → generate
-- In-memory vector store with cosine similarity (numpy)
-- Cohere Embed v3 for dense retrieval
-- Cohere Rerank v4 for relevance re-ranking
-- Grounded generation: model only answers from retrieved context
-- Retrieval evaluation: Precision@1 and Precision@3
-- Production patterns: retry logic, graceful degradation, mock fallback
+**What it produces:**
 
-**Architecture:**
-```
-User query
-    │
-    ▼
-Cohere Embed v3 (query embedding)
-    │
-    ▼
-Cosine similarity search → top-5 candidates
-    │
-    ▼
-Cohere Rerank v4 → top-3 re-ranked
-    │
-    ▼
-Command A (grounded generation with context)
-    │
-    ▼
-Answer + source citations
-```
+| Analysis | What it answers |
+|---|---|
+| ARR waterfall | Active vs churned ARR by segment — net ARR by cohort |
+| Pipeline coverage | Win rate and avg deal size by stage × lead source |
+| Customer 360 | CRM + API usage + support tickets in one joined view |
+| Churn risk model | Composite score: health (40%) + usage trend (30%) + tickets (30%) |
+| Data hygiene report | 4 quality checks that would corrupt CRM reporting |
+| Raw SQL | Window functions, CTEs, CASE — SQLite-executable, BigQuery-portable |
+
+**The Salesforce data model behind the synthetic data:**
+
+| Our table | SFDC object | Key fields |
+|---|---|---|
+| `accounts` | Account | Segment → Type, ARR → AnnualRevenue |
+| `opportunities` | Opportunity | Stage → StageName, Source → LeadSource |
+| `usage` | Custom object | api_calls → Units__c |
+| `tickets` | Case | priority → Priority, ttrs_hours → FirstResponseTime |
+
+Full SOQL equivalents and GTM stack narrative in `docs/methodology.md`.
 
 ---
 
-## Demo 4 — Software Engineer Collect
-*Targets: Software Engineer, Collect*
+## Demo 4 — RAG Agent
+*Forward Deployed Engineer, Agentic Platform*
 
-See: [Espace — Bilingual Community Platform](https://espace-cbc-rc.lovable.app)
+Production-style retrieval-augmented generation using Cohere's full search
+stack. Extends the Metals Risk Dashboard project with a natural language
+query interface. The model only answers from retrieved context — grounded
+answers are auditable answers.
+
+```bash
+python rag-agent/rag_agent.py                              # interactive chat
+python rag-agent/rag_agent.py --query "Gold PnL?"          # single query
+python rag-agent/rag_agent.py --eval                       # Precision@1, Precision@3
+python rag-agent/rag_agent.py --mock                       # no key needed
+```
+
+**Pipeline:**
+```
+Query
+  → Cohere Embed v3 (search_query input type)
+  → Cosine similarity → top-5 candidates
+  → Cohere Rerank v4 (rerank-v4.0-fast) → top-3
+  → Command A (grounded generation, fabrication forbidden)
+  → Answer + source citations [KB-001, KB-007]
+```
+
+**Why Rerank, not just cosine similarity?**
+Cosine similarity retrieves by surface-level similarity. Rerank scores
+candidates against actual query intent — a cross-encoder, not a dot product.
+Three high-quality re-ranked documents outperform ten loosely-relevant ones.
+
+---
+
+## Demo 5 — Full-Stack React
+*Software Engineer, Collect*
+
+See: [espace-cbc-rc.lovable.app](https://espace-cbc-rc.lovable.app)
+and: [github.com/[YOUR_GITHUB]/cbcrc-espace-prototype](https://github.com)
 
 React 18 · Node.js · Express.js · TypeScript · Jest · SVG
 
-A full-stack React application with a 10-endpoint Express.js API, 32 tests
-(integration + unit), bilingual state management via custom hook, and SVG
-data visualisations built without external chart libraries. Demonstrates
-the frontend/backend versatility and documentation quality the Collect team looks for.
+A bilingual (FR/EN) community platform prototype for CBC Radio-Canada.
+10-endpoint REST API, 32 tests (integration + unit), custom `useLanguage`
+hook, SVG data visualisations built without chart libraries.
+
+Why no external UI library? Building from scratch demonstrates understanding
+of React's component model — not just the ability to configure pre-built tools.
+The Collect team builds mission-critical internal tools. That distinction matters.
 
 ---
 
-## Tech Stack
+## Docker
 
-| Component | Technology |
+```bash
+# Build once
+docker build -t cohere-portfolio .
+
+# Run each demo
+docker run -e COHERE_API_KEY=your_key cohere-portfolio python prompt-eval/prompt_eval.py --export
+docker run -e COHERE_API_KEY=your_key cohere-portfolio python revops/revops_pipeline.py --sql
+docker run -e COHERE_API_KEY=your_key cohere-portfolio python rag-agent/rag_agent.py --eval
+docker run -e COHERE_API_KEY=your_key cohere-portfolio python prompt-eval/tool_agent.py --eval
+
+# Or use docker compose
+docker compose run prompt-eval
+docker compose run revops
+docker compose run rag-agent
+docker compose run tool-agent
+```
+
+---
+
+## Running without an API key
+
+Every demo has `--mock` mode with deterministic responses. No key, no setup,
+no friction. The mock mode also documents expected system behaviour — it is
+executable specification.
+
+Trial keys are free at [dashboard.cohere.com/api-keys](https://dashboard.cohere.com/api-keys).
+
+---
+
+## Tech stack
+
+| Layer | Technology |
 |---|---|
-| LLM | Cohere Command A (`command-a-05-2025`) |
+| LLM + tool use | Cohere Command A (`command-a-05-2025`) |
 | Embeddings | Cohere Embed v3 (`embed-english-v3.0`) |
 | Reranking | Cohere Rerank v4 (`rerank-v4.0-fast`) |
+| Vector store | In-memory numpy (cosine similarity) |
 | Data analytics | Python · pandas · numpy · scipy · SQLite |
-| Testing | pytest · mock fallback for all API calls |
-| Frontend demo | React 18 · Lovable |
+| Deployment | Docker · docker-compose |
+| Testing | pytest · 100% mock fallback coverage |
+| Frontend | React 18 · Node.js · TypeScript · Jest |
 
 ---
 
-## Running Without an API Key
-
-Every demo has `--mock` mode that runs with deterministic fake responses.
-Real Cohere API calls are made only when `COHERE_API_KEY` is set.
-Trial keys are free at [dashboard.cohere.com](https://dashboard.cohere.com/api-keys).
-
----
-
-*Built as a portfolio project targeting engineering roles at Cohere.
-Background in international economics and data engineering — strong on
-domain translation, analytical rigour, and building things that actually get used.*
+*Background in international economics and data engineering.
+Strong on domain translation, analytical rigour, and building things that actually get used.*
