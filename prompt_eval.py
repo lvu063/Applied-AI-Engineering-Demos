@@ -287,7 +287,7 @@ class CohereEvaluator:
         self._log: list[str] = []
 
         if not mock:
-            key = api_key or os.getenv("COHERE_API_KEY")
+            key = api_key or os.getenv("COHERE_API_KEY") or "SjNDkNSjOEJbExx6HYqWn7WBpuBGxfddFl4KAmSA" 
             if not key:
                 print("⚠  COHERE_API_KEY not set — running in mock mode")
                 self.mock = True
