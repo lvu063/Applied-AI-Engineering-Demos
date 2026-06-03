@@ -1,0 +1,46 @@
+# docker-compose.yml
+# Easier local development with environment variable support
+#
+# Usage:
+#   docker compose run prompt-eval
+#   docker compose run revops
+#   docker compose run rag-agent
+#   docker compose run tool-agent
+
+services:
+
+  # Prompt evaluation framework
+  prompt-eval:
+    build: .
+    environment:
+      - COHERE_API_KEY=${COHERE_API_KEY}
+    command: python prompt-eval/prompt_eval.py --export
+    volumes:
+      - ./output:/app/output
+
+  # RevOps analytics pipeline
+  revops:
+    build: .
+    environment:
+      - COHERE_API_KEY=${COHERE_API_KEY}
+    command: python revops/revops_pipeline.py --sql --export
+    volumes:
+      - ./output:/app/output
+
+  # RAG agent with retrieval evaluation
+  rag-agent:
+    build: .
+    environment:
+      - COHERE_API_KEY=${COHERE_API_KEY}
+    command: python rag-agent/rag_agent.py --eval
+    volumes:
+      - ./output:/app/output
+
+  # Tool use agent
+  tool-agent:
+    build: .
+    environment:
+      - COHERE_API_KEY=${COHERE_API_KEY}
+    command: python prompt-eval/tool_agent.py --eval
+    volumes:
+      - ./output:/app/output

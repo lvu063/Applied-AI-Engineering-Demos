@@ -1,0 +1,28 @@
+# .gitignore
+
+# NEVER commit API keys
+.env
+.env.*
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+
+# Generated output files
+*.csv
+*.json
+revops_data/
+prompt_eval_results.*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
