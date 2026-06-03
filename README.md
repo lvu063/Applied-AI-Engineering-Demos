@@ -4,7 +4,7 @@
 > Prompt Specialist, RevOps Analyst, FDE Agentic Platform, and Software Engineer Collect.
 > All demos are runnable today with a free Cohere trial key.
 
-**Live demo:** (https://cohere-ai-playground.lovable.app)
+**Live demo:** https://cohere-ai-playground.lovable.app
 
 ---
 
